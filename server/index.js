@@ -14,6 +14,14 @@ app.use(express.json());
 // Configure multer for file uploads (temporary directory)
 const upload = multer({ dest: require('os').tmpdir() });
 
+// Function to validate seat format
+function isValidSeat(seatLabel) {
+  // Seat should contain at least one letter and one number
+  // Valid formats: A1, B2, 1A, 2B, A10, 10A, etc.
+  const seatPattern = /^[A-Za-z]+\d+|\d+[A-Za-z]+$/;
+  return seatPattern.test(seatLabel.trim());
+}
+
 // Function to extract seat number from seat label
 function extractSeatNumber(seatLabel) {
   const match = seatLabel.match(/\d+/);
@@ -22,24 +30,60 @@ function extractSeatNumber(seatLabel) {
 
 // Function to generate boarding sequence
 function generateBoardingSequence(bookings) {
-  // Process each booking to find the closest seat to front
-  const processedBookings = bookings.map(booking => {
+  const validBookings = [];
+  const invalidBookings = [];
+
+  // Process each booking to validate seats and find the closest seat to front
+  bookings.forEach(booking => {
     const seats = booking.seats.split(',').map(seat => seat.trim());
-    const closestSeat = seats.reduce((closest, seat) => {
-      const currentNumber = extractSeatNumber(seat);
-      const closestNumber = extractSeatNumber(closest);
-      return currentNumber < closestNumber ? seat : closest;
-    });
-    
-    return {
-      bookingId: booking.bookingId,
-      closestSeat: closestSeat,
-      seatNumber: extractSeatNumber(closestSeat)
-    };
+    const validSeats = seats.filter(seat => isValidSeat(seat));
+    const invalidSeats = seats.filter(seat => !isValidSeat(seat));
+
+    if (validSeats.length === 0) {
+      // All seats are invalid
+      invalidBookings.push({
+        bookingId: booking.bookingId,
+        seats: booking.seats,
+        reason: 'All seats are invalid',
+        invalidSeats: invalidSeats
+      });
+    } else if (invalidSeats.length > 0) {
+      // Some seats are invalid, but we have valid ones
+      const closestSeat = validSeats.reduce((closest, seat) => {
+        const currentNumber = extractSeatNumber(seat);
+        const closestNumber = extractSeatNumber(closest);
+        return currentNumber < closestNumber ? seat : closest;
+      });
+      
+      validBookings.push({
+        bookingId: booking.bookingId,
+        closestSeat: closestSeat,
+        seatNumber: extractSeatNumber(closestSeat),
+        originalSeats: booking.seats,
+        validSeats: validSeats,
+        invalidSeats: invalidSeats
+      });
+    } else {
+      // All seats are valid
+      const closestSeat = validSeats.reduce((closest, seat) => {
+        const currentNumber = extractSeatNumber(seat);
+        const closestNumber = extractSeatNumber(closest);
+        return currentNumber < closestNumber ? seat : closest;
+      });
+      
+      validBookings.push({
+        bookingId: booking.bookingId,
+        closestSeat: closestSeat,
+        seatNumber: extractSeatNumber(closestSeat),
+        originalSeats: booking.seats,
+        validSeats: validSeats,
+        invalidSeats: []
+      });
+    }
   });
 
   // Sort by seat number (closest to front first), then by booking ID
-  const sortedBookings = processedBookings.sort((a, b) => {
+  const sortedBookings = validBookings.sort((a, b) => {
     if (a.seatNumber !== b.seatNumber) {
       return a.seatNumber - b.seatNumber;
     }
@@ -47,11 +91,21 @@ function generateBoardingSequence(bookings) {
   });
 
   // Generate sequence
-  return sortedBookings.map((booking, index) => ({
+  const sequence = sortedBookings.map((booking, index) => ({
     seq: index + 1,
     bookingId: booking.bookingId,
-    closestSeat: booking.closestSeat
+    closestSeat: booking.closestSeat,
+    originalSeats: booking.originalSeats,
+    validSeats: booking.validSeats,
+    invalidSeats: booking.invalidSeats
   }));
+
+  return {
+    sequence: sequence,
+    invalidBookings: invalidBookings,
+    totalValidBookings: validBookings.length,
+    totalInvalidBookings: invalidBookings.length
+  };
 }
 
 // Parse CSV/TSV data
@@ -87,16 +141,12 @@ app.post('/api/generate-sequence', upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'No valid booking data found' });
     }
 
-    const sequence = generateBoardingSequence(bookings);
+    const result = generateBoardingSequence(bookings);
     
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
     
-    res.json({
-      success: true,
-      sequence: sequence,
-      totalBookings: bookings.length
-    });
+    res.json(result);
   } catch (error) {
     console.error('Error processing file:', error);
     res.status(500).json({ error: 'Error processing file' });
@@ -112,13 +162,9 @@ app.post('/api/generate-sequence-manual', (req, res) => {
       return res.status(400).json({ error: 'Invalid booking data' });
     }
 
-    const sequence = generateBoardingSequence(bookings);
+    const result = generateBoardingSequence(bookings);
     
-    res.json({
-      success: true,
-      sequence: sequence,
-      totalBookings: bookings.length
-    });
+    res.json(result);
   } catch (error) {
     console.error('Error processing manual input:', error);
     res.status(500).json({ error: 'Error processing input' });

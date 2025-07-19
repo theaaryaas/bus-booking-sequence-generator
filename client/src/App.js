@@ -75,9 +75,28 @@ function App() {
                 bookings: parsedBookings
               });
 
-              if (response.data.success) {
-                setSequence(response.data.sequence);
-                setSuccess(`Generated boarding sequence for ${response.data.totalBookings} bookings from uploaded Excel file`);
+              const result = response.data;
+              
+              if (result.sequence && result.sequence.length > 0) {
+                setSequence(result.sequence);
+                
+                let successMessage = `Generated boarding sequence for ${result.totalValidBookings} valid bookings from uploaded Excel file`;
+                
+                if (result.totalInvalidBookings > 0) {
+                  successMessage += `. ${result.totalInvalidBookings} booking(s) with invalid seats were excluded.`;
+                }
+                
+                setSuccess(successMessage);
+                
+                // Show warnings for invalid bookings
+                if (result.invalidBookings && result.invalidBookings.length > 0) {
+                  const invalidMessage = `Invalid bookings: ${result.invalidBookings.map(b => 
+                    `Booking ${b.bookingId} (${b.seats}) - ${b.reason}`
+                  ).join(', ')}`;
+                  setError(invalidMessage);
+                }
+              } else {
+                setError('No valid bookings found in Excel file. Please check your seat format (e.g., A1, B2, 1A, 2B)');
               }
             } catch (err) {
               console.error('API Error:', err);
@@ -137,9 +156,28 @@ function App() {
                 bookings: parsedBookings
               });
 
-              if (response.data.success) {
-                setSequence(response.data.sequence);
-                setSuccess(`Generated boarding sequence for ${response.data.totalBookings} bookings from uploaded file`);
+              const result = response.data;
+              
+              if (result.sequence && result.sequence.length > 0) {
+                setSequence(result.sequence);
+                
+                let successMessage = `Generated boarding sequence for ${result.totalValidBookings} valid bookings from uploaded file`;
+                
+                if (result.totalInvalidBookings > 0) {
+                  successMessage += `. ${result.totalInvalidBookings} booking(s) with invalid seats were excluded.`;
+                }
+                
+                setSuccess(successMessage);
+                
+                // Show warnings for invalid bookings
+                if (result.invalidBookings && result.invalidBookings.length > 0) {
+                  const invalidMessage = `Invalid bookings: ${result.invalidBookings.map(b => 
+                    `Booking ${b.bookingId} (${b.seats}) - ${b.reason}`
+                  ).join(', ')}`;
+                  setError(invalidMessage);
+                }
+              } else {
+                setError('No valid bookings found in uploaded file. Please check your seat format (e.g., A1, B2, 1A, 2B)');
               }
             } catch (err) {
               console.error('API Error:', err);
@@ -211,9 +249,28 @@ function App() {
         bookings: bookings
       });
 
-      if (response.data.success) {
-        setSequence(response.data.sequence);
-        setSuccess(`Generated boarding sequence for ${response.data.totalBookings} bookings`);
+      const result = response.data;
+      
+      if (result.sequence && result.sequence.length > 0) {
+        setSequence(result.sequence);
+        
+        let successMessage = `Generated boarding sequence for ${result.totalValidBookings} valid bookings`;
+        
+        if (result.totalInvalidBookings > 0) {
+          successMessage += `. ${result.totalInvalidBookings} booking(s) with invalid seats were excluded.`;
+        }
+        
+        setSuccess(successMessage);
+        
+        // Show warnings for invalid bookings
+        if (result.invalidBookings && result.invalidBookings.length > 0) {
+          const invalidMessage = `Invalid bookings: ${result.invalidBookings.map(b => 
+            `Booking ${b.bookingId} (${b.seats}) - ${b.reason}`
+          ).join(', ')}`;
+          setError(invalidMessage);
+        }
+      } else {
+        setError('No valid bookings found. Please check your seat format (e.g., A1, B2, 1A, 2B)');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Error generating sequence');
@@ -344,6 +401,8 @@ function App() {
                 <th>Sequence</th>
                 <th>Booking ID</th>
                 <th>Closest Seat</th>
+                <th>All Seats</th>
+                <th>Invalid Seats</th>
               </tr>
             </thead>
             <tbody>
@@ -353,7 +412,19 @@ function App() {
                     <div className="sequence-number">{item.seq}</div>
                   </td>
                   <td><strong>{item.bookingId}</strong></td>
-                  <td>{item.closestSeat}</td>
+                  <td className="closest-seat">{item.closestSeat}</td>
+                  <td className="all-seats">{item.originalSeats}</td>
+                  <td className="invalid-seats">
+                    {item.invalidSeats && item.invalidSeats.length > 0 ? (
+                      <span className="invalid-seat-list">
+                        {item.invalidSeats.map((seat, idx) => (
+                          <span key={idx} className="invalid-seat">{seat}</span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="no-invalid">None</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

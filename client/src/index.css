@@ -208,6 +208,7 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   font-weight: 600;
+  font-size: 14px;
 }
 
 .results-table tr:hover {
@@ -215,16 +216,55 @@ body {
 }
 
 .sequence-number {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 600;
   font-size: 14px;
+  margin: 0 auto;
+}
+
+.closest-seat {
+  font-weight: 600;
+  color: #28a745;
+  background: rgba(40, 167, 69, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.all-seats {
+  font-size: 13px;
+  color: #666;
+}
+
+.invalid-seats {
+  font-size: 13px;
+}
+
+.invalid-seat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.invalid-seat {
+  background: #dc3545;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.no-invalid {
+  color: #28a745;
+  font-style: italic;
 }
 
 .error {
