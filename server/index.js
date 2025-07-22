@@ -14,6 +14,24 @@ app.use(express.json());
 // Configure multer for file uploads (temporary directory)
 const upload = multer({ dest: require('os').tmpdir() });
 
+// In-memory cart for demonstration (replace with DB in production)
+let cart = [];
+
+// Add item to cart
+app.post('/api/cart', (req, res) => {
+  const { productId, quantity } = req.body;
+  if (!productId || !quantity) {
+    return res.status(400).json({ error: 'Missing productId or quantity' });
+  }
+  cart.push({ productId, quantity });
+  res.json({ message: 'Item added to cart', items: cart });
+});
+
+// Get cart items
+app.get('/api/cart', (req, res) => {
+  res.json({ items: cart });
+});
+
 // Function to validate seat format
 function isValidSeat(seatLabel) {
   // Seat should contain at least one letter and one number
